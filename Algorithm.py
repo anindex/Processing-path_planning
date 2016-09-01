@@ -1,7 +1,10 @@
 from Queue import PriorityQueue
+from Grid import PriorityDict
+from time import sleep
 
-def heuristic_distance(startP, goal):
-    return sqrt((startP[0] - goal[0])**2 + (startP[1] - goal[1])**2)
+##########################################################
+#            A* Search-based algorithm (from start)      #
+##########################################################
 
 def astar_search(grid, startP, goal):
     frontier = PriorityQueue()
@@ -23,10 +26,107 @@ def astar_search(grid, startP, goal):
                 cost_so_far[next] = new_cost
                 frontier.put((heuristic_distance(next, goal) + cost_so_far[next], next))
         
-    return came_from if current == goal else None
+    return came_from, cost_so_far if current == goal else None
 
-def dstar_search(grid, startP, goal):
+###########################################################
+#         D* Lite Search-based algorithm (from goal)      #
+###########################################################
+
+#Note: data[node][0] -> g() value
+#      data[node][1] -> rhs() value
+
+def calculate_key(node, data, robotPos, km): 
+    return min(data[node][0], data[node][1]) + heuristic_distance(robotPos, node) + km
+
+def update_vertex(node, robot, goal, frontier, data, km):
+    if node != goal: data[node][1] = get_lowest_cost_node(robot, node, data)[1]
+    if node in frontier: del frontier[node]
+    if  data[node][0] != data[node][1]: frontier[node] = calculate_key(node, data, robot.pos, km)
+        
+def get_lowest_cost_node(robot, node, data):
+    neighbors = {k: (data[k][0]+robot.cost(node, k)) for k in robot.detect_neighbor(node)}
+    result = min(neighbors, key=neighbors.get)
+    return result, neighbors[result]
+
+def get_lowest_rhs_node(robot, node, data):
+    neighbors = {k: (data[k][1]+robot.cost(node, k)) for k in robot.detect_neighbor(node)}
+    result = min(neighbors, key=neighbors.get)
+    return result, neighbors[result]
+
+def compute_shortest_path(robot, goal, data, frontier, km): 
+    while frontier and (frontier.top()[1] < (calculate_key(robot.pos, data, robot.pos, km) + 1) or data[robot.pos][1] != data[robot.pos][0]):
+        currNode, kold = frontier.pop() 
+        knew = calculate_key(currNode, data, robot.pos, km)
+        if kold < knew:
+            frontier[currNode] = knew
+        elif data[currNode][0] > data[currNode][1]:
+            data[currNode][0] = data[currNode][1]
+            for pred in robot.detect_neighbor(currNode):
+                update_vertex(pred, robot, goal, frontier, data, km)
+        else:
+            data[currNode][0] = float("inf")
+            for node in robot.detect_neighbor(currNode) + [currNode, ]:
+                update_vertex(node, robot, goal, frontier, data, km)
+        #sleep(0.1)
+
+def dlite_search(grid, robot, startP, goal, path, frontier):
     
+    ######### Initialization ############### 
+    km = 0  
+    data = {k: [float("inf"), float("inf")] for k in [(i, j) for i in range(grid.ix) for j in range(grid.iy)]}  
+    overallPath = []
+    
+    
+    data[goal][1] = 0
+    frontier[goal] = heuristic_distance(startP, goal)
+    lastNode = startP
+    robot.pos = startP
+    robot.knownWorld = grid.walls[:]
+    #robot.knownWorld = []
+    ############## Main ####################
+    
+    compute_shortest_path(robot, goal, data, frontier, km)
+    modify_path(path, reconstruct_path_gradient(robot, data, goal))
+    while robot.pos != goal:
+        robot.pos = get_lowest_cost_node(robot, robot.pos, data)[0]
+        overallPath.append(robot.pos)
+        changedNode = robot.detect_changes(grid)
+        if changedNode[0] or changedNode[1]:
+            km += heuristic_distance(lastNode, robot.pos)
+            lastNode = robot.pos
+            for node in changedNode[0] + changedNode[1]: 
+                robot.update_cell(node)                # node -> v, next -> u          
+                for next in robot.detect_neighbor(node):
+                    update_vertex(next, robot, goal, frontier, data, km)
+                update_vertex(node, robot, goal, frontier, data, km)             
+            compute_shortest_path(robot, goal, data, frontier, km)  
+            print km  
+            modify_path(path, reconstruct_path_gradient(robot, data, goal))        
+        sleep(0.2)
+    
+###########################################################
+#                  Utility                                #
+###########################################################
+
+def modify_path(path, newPath):
+    del path[:]
+    path += newPath
+
+def heuristic_distance(startP, goal):
+    return sqrt((startP[0] - goal[0])**2 + (startP[1] - goal[1])**2)
+
+def heuristic_manhattan(startP, goal):
+    return abs(startP[0] - goal[0]) + abs(startP[1] - goal[1])
+
+def reconstruct_path_gradient(robot, data, goal):
+    current = robot.pos
+    path = [current]
+    if data[current][1] == float("inf"):
+        return None
+    while current != goal:
+        current = get_lowest_cost_node(robot, current, data)[0]
+        path.append(current)
+    return path
 
 def reconstruct_path(came_from, startP, goal):
     if came_from != None:
@@ -36,6 +136,7 @@ def reconstruct_path(came_from, startP, goal):
         while current != startP:
             current = came_from[current]
             path.append(current)
+        path.reverse()
         return path
     else:
         return None
