@@ -41,6 +41,11 @@ def draw_cell(x, y, res, attr):
         stroke(0)
         fill(attr[0], attr[1], attr[2])
         rect(x*res, y*res, res, res)
+    
+def draw_cell_value(x, y, res, value):
+        stroke(0)
+        fill(value)
+        rect(x*res, y*res, res, res)
 
 def draw_arrow(x, y, res, dir):
         if dir == 'u':
@@ -141,7 +146,6 @@ class SquareGrid:
         self.resolution = resolution
         self.f = createFont("Arial", resolution / 2, True)
         self.walls = []
-        self.roughs = []
         if(w % resolution == 0 and h % resolution == 0):
             self.ix = w / resolution
             self.iy = h / resolution
@@ -186,18 +190,19 @@ class SquareGrid:
         if nextP in self.roughs:
             val += 4
         return val 
-    def draw_grid(self, startP, goal, bot, distances = None, came_from = None, frontier = None, path = None):
+    def draw_grid(self, startP, goal, bot, distances = None, came_from = None, frontier = None, path = None, closedNode = None):
         for row in range(self.iy):
             for col in range(self.ix):
                 current = (col, row)
                 if current in self.walls:
                     draw_cell(col, row, self.resolution, (0, 0, 0))
-                elif current in self.roughs:
-                    draw_cell(col, row, self.resolution, (100, 100, 100))
                 elif current == bot.pos:
                     draw_cell(col, row, self.resolution, (0, 0, 255))
                 elif path != None and current in path:
                     draw_cell(col, row, self.resolution, (255, 0, 0))
+                elif closedNode != None and current in closedNode:
+                    num = closedNode.count(current)
+                    draw_cell_value(col, row, self.resolution, 255 - 60*num)
                 elif frontier != None and current in frontier:
                     draw_cell(col, row, self.resolution, (255, 255, 0))
                 elif distances != None and current in distances:

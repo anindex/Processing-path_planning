@@ -3,14 +3,20 @@ from Algorithm import astar_search, reconstruct_path, dlite_search
 from threading import Thread
 from robot import Robot
 import pickle
+from MazeGenerator import MazeGenerator
 
 res = 20
 #res = 10
 path = []
 frontier = PriorityDict()
 data = (None, None)
-startP = (2, 0)
-goal = (18, 15)
+closedNode = []
+
+#startP = (2, 0)
+#goal = (18, 15)
+
+startP = (1, 1)
+goal = (39, 39)
 
 #startP = (9, 19)
 #goal = (39, 19)
@@ -18,27 +24,34 @@ goal = (18, 15)
 #startP = (17, 0)
 #goal = (15, 18)
 
+
+
 def setup():
-    size(380, 400, P3D)
+    size(820, 820, P3D)
     #size(500, 400, P3D)
     #size(380, 380, P3D)
-    global grid
-    grid = maze1(res)
+    
+    global maze
+    maze = MazeGenerator(width, height, res, (1, 1))
+    maze.generate()
+    
+    #global grid
+    #grid = maze1(res)
     #grid = map1(res)
     #grid = SquareGrid(width, height, res)
     global bot
-    bot = Robot(2, 1, grid, startP)
+    bot = Robot(2, 1, maze.grid, startP)
 
 def draw():
-    grid.draw_grid(startP, goal, bot, None, None, frontier, path)
+    maze.grid.draw_grid(startP, goal, bot, None, None, None, None, closedNode)
     
 
 def mousePressed():
     curr = (mouseX // res, mouseY // res)
-    if curr in grid.walls:
-        grid.walls.remove(curr)
+    if curr in maze.grid.walls:
+        maze.grid.walls.remove(curr)
     else:
-        grid.walls.append(curr)
+        maze.grid.walls.append(curr)
 
 def keyPressed():
     if key == 's':
@@ -78,6 +91,6 @@ def robot_move():
 def dlite_path_analyst_thread():
     global path
     global frontier 
-    dlite_search(grid, bot, startP, goal, path, frontier)
+    dlite_search(maze.grid, bot, startP, goal, path, frontier, closedNode)
 
     
