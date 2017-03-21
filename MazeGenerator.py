@@ -1,11 +1,20 @@
+#######################################################################################################
+# Author: An T. Le, DOB: 11/11/1997
+# Organization: Vietnamese-German University
+# Date Updated: March 21th, 2017
+# Date Created: July 2nd, 2016
+# Application: Occupancy Grid Library and Search-based Path Planning Library 
+#######################################################################################################
+
 from random import randint
 from Grid import SquareGrid
 from time import sleep
 
+############################################# Maze Generator Engine using Recursive Backtracking algorithm ##########################################
 class MazeGenerator:
     def __init__(self, w, h, res, initial_cell):
-        self.grid = SquareGrid(w, h, res)
-        self.grid.walls = [(x, y) for x in range(self.grid.ix) for y in range(self.grid.iy) if x % 2 == 0 or y % 2 == 0]
+        self.grid = SquareGrid(w, h, res) # initialize map
+        self.grid.walls = [(x, y) for x in range(self.grid.ix) for y in range(self.grid.iy) if x % 2 == 0 or y % 2 == 0] # initialize full obstacle map
         if initial_cell[0] % 2 == 0 or initial_cell[1] % 2 == 0:
             self.fcell = (1, 1)
             print "Cell coordinates must be odd, initial cell sets to (1, 1)"
@@ -21,7 +30,7 @@ class MazeGenerator:
         return neighbor
     
     
-    def generate(self):
+    def generate(self): # generate maze routine
         #-------------------- Initialize --------------------
         stack = []
         unvisited = [(x, y) for x in range(1, self.grid.ix, 2) for y in range(1, self.grid.iy, 2)]

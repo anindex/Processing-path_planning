@@ -1,3 +1,11 @@
+#######################################################################################################
+# Author: An T. Le, DOB: 11/11/1997
+# Organization: Vietnamese-German University
+# Date Updated: March 21th, 2017
+# Date Created: July 2nd, 2016
+# Application: Occupancy Grid Library and Search-based Path Planning Library 
+#######################################################################################################
+
 from Queue import PriorityQueue
 from Grid import PriorityDict
 from time import sleep
@@ -73,15 +81,14 @@ def compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode):
     return Pnode
 
 
-def dlite_search(grid, robot, startP, goal, path, frontier, closedNode):
+def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rtl = 0.5, param_lh = 2.28):
     
     ######### Initialization ############### 
     km = 0  
     data = {k: [float("inf"), float("inf")] for k in [(i, j) for i in range(grid.ix) for j in range(grid.iy)]}  
     overallPath = []
     Pnode = 0
-    Tnode = 0
-    a = 0.5                                                                       
+    Tnode = 0                                                                      
     
     data[goal][1] = 0
     frontier[goal] = heuristic_distance(startP, goal)
@@ -90,9 +97,8 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode):
     robot.knownWorld = grid.walls[:]
     #robot.knownWorld = []
     ############## Main ####################
-    
-    print "First LH: {0}".format(heuristic_distance(startP, goal))
     Pnode = compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode)
+    print "Estimated LH: {0}".format(Pnode / heuristic_distance(startP, goal))
     modify_path(path, reconstruct_path_gradient(robot, data, goal))
     while robot.pos != goal:
         robot.pos = get_lowest_cost_node(robot, robot.pos, data)[0]
@@ -100,18 +106,15 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode):
         overallPath.append(robot.pos)
         changedNode = robot.detect_changes(grid)
         if changedNode[0] or changedNode[1]:
-            print "Pnode: {0}, Tnode: {1}, Path: {2}, Ratio: {3}, Lheuristic: {4}".format(Pnode, Tnode, len(path), float(Tnode) / len(path), a * heuristic_distance(robot.pos, goal))
+            print "Pnode: {0}, Tnode: {1}, Path: {2}, Ratio: {3}, Lheuristic: {4}".format(Pnode, Tnode, len(path), float(Tnode) / len(path), param_lh * heuristic_distance(robot.pos, goal))
             del closedNode[:]
-            if float(Tnode) / len(path) > a:
-            #if  len(path) - Tnode <= a * heuristic_distance(robot.pos, goal):
+            if float(Tnode) / len(path) > param_rtl: # -------------------- Ratio of traversed length
+            #if  len(path) - Tnode <= param_lh * heuristic_distance(robot.pos, goal): # -------------- Linear Heuristic criteria
                 km = 0
                 frontier.clear()
                 Pnode = 0
                 Tnode = 0
                 data = {k: [float("inf"), float("inf")] for k in [(i, j) for i in range(grid.ix) for j in range(grid.iy)]}  
-                #for n in path:
-                #    data[n][0] = float("inf")
-                #    data[n][1] = float("inf")
                 data[goal][1] = 0
                 frontier[goal] = heuristic_distance(robot.pos, goal)
                 lastNode = robot.pos
@@ -131,23 +134,23 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode):
                 temp = compute_shortest_path(robot, goal, data, frontier, km, closedNode, 0)
                 print temp, "False"   
                 modify_path(path, reconstruct_path_gradient(robot, data, goal))        
-        sleep(0.1)
+        sleep(0.3)
     
 ###########################################################
 #                  Utility                                #
 ###########################################################
 
-def modify_path(path, newPath):
+def modify_path(path, newPath): # update global variable "path" to new path
     del path[:]
     path += newPath
 
-def heuristic_distance(startP, goal):
+def heuristic_distance(startP, goal): # calculate square root heuristic distance on grid
     return sqrt((startP[0] - goal[0])**2 + (startP[1] - goal[1])**2)
 
-def heuristic_manhattan(startP, goal):
+def heuristic_manhattan(startP, goal): # calculate manhattan heuristic distance on grid
     return abs(startP[0] - goal[0]) + abs(startP[1] - goal[1])
 
-def reconstruct_path_gradient(robot, data, goal):
+def reconstruct_path_gradient(robot, data, goal): # output the path from cost matrix
     current = robot.pos
     path = [current]
     if data[current][1] == float("inf"):
@@ -157,7 +160,7 @@ def reconstruct_path_gradient(robot, data, goal):
         path.append(current)
     return path
 
-def reconstruct_path(came_from, startP, goal):
+def reconstruct_path(came_from, startP, goal): # output the path from search tree
     if came_from != None:
         path = []
         current = goal

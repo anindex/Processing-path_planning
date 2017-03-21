@@ -1,19 +1,29 @@
+#######################################################################################################
+# Author: An T. Le, DOB: 11/11/1997
+# Organization: Vietnamese-German University
+# Date Updated: March 21th, 2017
+# Date Created: July 2nd, 2016
+# Application: Occupancy Grid Library and Search-based Path Planning Library 
+#######################################################################################################
+
 from time import sleep
 
+
+##################################### Concept Robot with Rnage Sensor in Virtual Map ###############################################################
 class Robot:
     def __init__(self, sensor_range, speed, grid, startP):
         self.sensor_range = sensor_range
         self.speed = speed
         self.path = None
         self.pos = startP
-        self.knownWorld = []
+        self.knownWorld = [] # robot knowledge about its surroundings
         self.isStop = False
         self.pred_of = {}
         
         self.ix = grid.ix
         self.iy = grid.iy
 
-    def traverse(self):
+    def traverse(self): # traverse routine 
         if self.pos != self.path[-1] and self.pos in self.path:
             next = self.path[self.path.index(self.pos) + 1]
             if next not in self.knownWorld:
@@ -24,7 +34,7 @@ class Robot:
         else:
             self.isStop = True
     
-    def get_data(self, grid):
+    def get_data(self, grid): # retrieve data about cells' states 
         result = [(self.pos[0] + i, self.pos[1] + j) for i in range(-self.sensor_range, self.sensor_range + 1) for j in range(-self.sensor_range, self.sensor_range + 1)]
         result.remove(self.pos)
         dark = filter(lambda item: item in grid.walls, result)
@@ -69,19 +79,19 @@ class Robot:
         if (x+y) % 2 == 0: result.reverse()
         return result
     
-    def detect_changes(self, grid):
+    def detect_changes(self, grid): # detect change in states of robot's surroundings
         sensorData = self.get_data(grid)
         toHigh = filter(lambda item: item not in self.knownWorld, sensorData[0])
         toLow = filter(lambda item: item in self.knownWorld, sensorData[1])
         return toHigh, toLow
     
-    def update_cell(self, id):
+    def update_cell(self, id): # update a cell in robot knowledge
         if id in self.knownWorld:
             self.knownWorld.remove(id)
         else:
             self.knownWorld.append(id)
     
-    def update_map(self, changedNode):
+    def update_map(self, changedNode): # update robot knowledge
         self.knownWorld += changedNode[0]
         for node in changedNode[1]:
             self.knownWorld.remove(node)

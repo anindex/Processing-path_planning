@@ -1,5 +1,14 @@
+#######################################################################################################
+# Author: An T. Le, DOB: 11/11/1997
+# Organization: Vietnamese-German University
+# Date Updated: March 21th, 2017
+# Date Created: July 2nd, 2016
+# Application: Occupancy Grid Library and Search-based Path Planning Library 
+#######################################################################################################
+
 from heapq import heappush, heappop, heapify
 
+################################## PriorityDict Wrapper of dict data type ###########################################################
 class PriorityDict(dict):
     def __init__(self, *args, **kwargs):
         super(PriorityDict, self).__init__(self, *args, **kwargs)
@@ -32,11 +41,12 @@ class PriorityDict(dict):
         else:
             self._rebuild_heap()
 
-
+############################# Define Resolution Exception #############################################
 class InvalidResolution(RuntimeError):
     def __init__(self, arg):
         self.arg = arg
 
+############################ Define draw cell function ################################################
 def draw_cell(x, y, res, attr):
         stroke(0)
         fill(attr[0], attr[1], attr[2])
@@ -47,6 +57,7 @@ def draw_cell_value(x, y, res, value):
         fill(value)
         rect(x*res, y*res, res, res)
 
+########################## Define draw arrow function (for search tree simulation) ####################
 def draw_arrow(x, y, res, dir):
         if dir == 'u':
             x1 = x*res + res / 2
@@ -141,45 +152,42 @@ def draw_arrow(x, y, res, dir):
             line(0, 0, 2, -2)
             popMatrix()
 
+#################################### Occupancy Grid Environment ##################################################
 class SquareGrid:
     def __init__(self, w, h, resolution):
         self.resolution = resolution
         self.f = createFont("Arial", resolution / 2, True)
-        self.walls = []
-        if(w % resolution == 0 and h % resolution == 0):
+        self.walls = [] # map's obstacles
+        self.knowWorld = []
+        self.roughs = [] # rough terran means higher cost to traverse (experimential)
+        if(w % resolution == 0 and h % resolution == 0): # check if resolution is valid
             self.ix = w / resolution
             self.iy = h / resolution
         else:
             raise InvalidResolution("Bad Initialization")
         
-    def in_bounds(self, id):
+    def in_bounds(self, id): # check if the range has reached outside map
         return 0 <= id[0] and id[0] < self.ix and 0 <= id[1] and id[1] < self.iy
     
-    def passable(self, id):
+    def passable(self, id): # check the robot can go to a position or not
         return id not in self.walls
      
-    def neighbor(self, id):
+    def neighbor(self, id, excluded = True): # get the neighbor cells from current cell (optionally exclude the current cell)
         x, y = id
         result = [(x + i, y + j) for i in range(-1, 2) for j in range(-1, 2)]
-        result.remove(id)
+        if excluded:
+            result.remove(id)
         result = filter(self.in_bounds, result)
         result = filter(self.passable, result)
-        if (x+y) % 2 == 0: result.reverse()
+        if (x+y) % 2 == 0: result.reverse() # for good looking scanning pattern
         return result
     
-    def all_neighbor(self, id):
-        x, y = id
-        result = [(x + i, y + j) for i in range(-1, 2) for j in range(-1, 2)]
-        result = filter(self.in_bounds, result)
-        if (x+y) % 2 == 0: result.reverse()
-        return result
-    
-    def add_walls(self, lp, rp):
+    def add_walls(self, lp, rp): # utility to add an obstacle at an specific position
         for i in range(lp[0], rp[0]+1):
             for j in range(lp[1], rp[1]+1):
                 self.walls.append((i, j))
     
-    def cost(self, currP, nextP):
+    def cost(self, currP, nextP): # get cost to traverse from current to next position
         val = 0
         if currP in self.knownWorld or nextP in self.knownWorld:
             return float("inf")
@@ -190,7 +198,8 @@ class SquareGrid:
         if nextP in self.roughs:
             val += 4
         return val 
-    def draw_grid(self, startP, goal, bot, distances = None, came_from = None, frontier = None, path = None, closedNode = None):
+    
+    def draw_grid(self, startP, goal, bot, distances = None, came_from = None, frontier = None, path = None, closedNode = None): # draw the map routine
         for row in range(self.iy):
             for col in range(self.ix):
                 current = (col, row)
@@ -234,6 +243,7 @@ class SquareGrid:
                     draw_cell(col, row, self.resolution, (255, 255, 255))
 
 
+######################################## Custom Maps ##########################################################
 def map1(res):
     grid = SquareGrid(width, height, res)
     grid.add_walls((8, 20), (14, 20))
