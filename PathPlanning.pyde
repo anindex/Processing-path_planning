@@ -12,20 +12,22 @@ from Algorithm import astar_search, reconstruct_path, dlite_search
 from threading import Thread
 from robot import Robot
 from MazeGenerator import MazeGenerator
+import copy
 
 
 ################################ User Configuration ###################################################
 
-res = 10 # set map resolution (10 means 10 bit per square grid)
+res = 10 # set map resolution (10 means 10 pixels per square grid)
 
-startP = (1, 1) # set starting and goal position of the robot (origin of coordinate is at top left of the window)
-#goal = (30, 10)
+startP = None # set starting and goal position of the robot (origin of coordinate is at top left of the window)
+goal = None
 
-sizeX = 510 # set the size of the environment
-sizeY = 510
+sizeX = 310 # set the size of the environment
+sizeY = 310
 
+grid = None
 ############################### Main Program ###########################################################
-#global variables
+#global variables for display
 path = []
 frontier = PriorityDict()
 data = (None, None)
@@ -35,25 +37,21 @@ closedNode = []
 def setup():
     size(sizeX, sizeY, P3D) # set the size of the environnment
     
-    global goal
-    goal = (width / res - 2, height / res - 2) # always set goal at bottom right of the map
-    
-    global maze
-    maze = MazeGenerator(width, height, res, (1, 1)) # initialize map 
-    maze.generate() # generate maze
+    open_environment((2, 25), (25, 25))
+    #maze_environment()
     
     global bot
-    bot = Robot(2, 1, maze.grid, startP) # initialize robot perception
+    bot = Robot(2, 1, grid, startP) # initialize robot perception
                 
 def draw():
-    maze.grid.draw_grid(startP, goal, bot, None, None, None, path, closedNode) # continuously draw map and robot conditions in real-time  
+    grid.draw_grid(startP, goal, bot, None, None, None, path, closedNode) # continuously draw map and robot conditions in real-time  
 
 def mousePressed():
     curr = (mouseX // res, mouseY // res) # identify a grid position when clicked on the windows
-    if curr in maze.grid.walls: # on-off rountine, if it is an obstacle, then remove it and vice versa.
-        maze.grid.walls.remove(curr) 
+    if curr in grid.walls: # on-off rountine, if it is an obstacle, then remove it and vice versa.
+        grid.walls.remove(curr) 
     else:
-        maze.grid.walls.append(curr)
+        grid.walls.append(curr)
 
 def keyPressed():
     if key == 'd': # trigger d*lite algorithm with LHD criteria
@@ -73,7 +71,7 @@ def keyPressed():
 def astar_path_analyst_thread(): # define thread for a* algorithm
     global path
     global data
-    data = astar_search(maze.grid, startP, goal)
+    data = astar_search(grid, startP, goal)
     path = reconstruct_path(data[0], startP, goal)
     
 
@@ -88,12 +86,31 @@ def robot_move(): # define thread for robot move along calculated path
 def dlite_path_analyst_thread(): # define thread for d*lite algorithm with LHD criteria
     global path
     global frontier 
-    dlite_search(maze.grid, bot, startP, goal, path, frontier, closedNode, 1)
+    dlite_search(grid, bot, startP, goal, path, frontier, closedNode, 1)
     
 def dlr_path_analyst_thread(): # define thread for d*lite algorithm with Ratio criteria
     global path
     global frontier 
-    dlite_search(maze.grid, bot, startP, goal, path, frontier, closedNode, 0.5)
+    dlite_search(grid, bot, startP, goal, path, frontier, closedNode, 0.5)
 
-
+def open_environment(set_start, set_goal):
+    global grid
+    grid = SquareGrid(width, height, res)
     
+    global startP
+    startP = set_start
+    
+    global goal
+    goal = set_goal
+    
+def maze_environment(set_start = None, set_goal = None):
+    global grid
+    maze = MazeGenerator(width, height, res, (1, 1)) # initialize map 
+    maze.generate()
+    grid = maze.grid
+    
+    global startP
+    startP = (1, 1)
+    
+    global goal
+    goal = (width / res - 2, height / res - 2) # always set goal at bottom right of the map

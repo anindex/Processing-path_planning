@@ -9,6 +9,7 @@
 from Queue import PriorityQueue
 from Grid import PriorityDict
 from time import sleep
+import copy
 
 ##########################################################
 #            A* Search-based algorithm (from start)      #
@@ -98,7 +99,15 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rt
     #robot.knownWorld = []
     ############## Main ####################
     Pnode = compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode)
-    print "Estimated LH: {0}".format(Pnode / heuristic_distance(startP, goal))
+    
+    last_heuristic = heuristic_distance(startP, goal)
+    estimated_LH = Pnode / heuristic_distance(startP, goal)
+    print "Estimated LH: {0:0.2f}".format(estimated_LH)
+    
+    param_lh = estimated_LH
+    
+    
+    
     modify_path(path, reconstruct_path_gradient(robot, data, goal))
     while robot.pos != goal:
         robot.pos = get_lowest_cost_node(robot, robot.pos, data)[0]
@@ -106,10 +115,15 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rt
         overallPath.append(robot.pos)
         changedNode = robot.detect_changes(grid)
         if changedNode[0] or changedNode[1]:
-            print "Pnode: {0}, Tnode: {1}, Path: {2}, Ratio: {3}, Lheuristic: {4}".format(Pnode, Tnode, len(path), float(Tnode) / len(path), param_lh * heuristic_distance(robot.pos, goal))
             del closedNode[:]
-            if float(Tnode) / len(path) > param_rtl: # -------------------- Ratio of traversed length
-            #if  len(path) - Tnode <= param_lh * heuristic_distance(robot.pos, goal): # -------------- Linear Heuristic criteria
+            current_heuristic = heuristic_distance(robot.pos, goal)
+            print "Pnode: {0}, Tnode: {1}, Path: {2}, Remain Node: {3}, Ratio: {4:0.2f}, Lheuristic: {5:0.2f}, LHRatio: {6:0.2f}".format(Pnode, Tnode, len(path), len(path) - Tnode, float(Tnode) / len(path), param_lh * heuristic_distance(robot.pos, goal), current_heuristic / last_heuristic) # Data Pnode and Tnode at the time robot detects changes
+            #if float(Tnode) / len(path) > param_rtl: # -------------------- Ratio of traversed length        
+            if  len(path) - Tnode <= param_lh * current_heuristic and current_heuristic / last_heuristic < 0.35: # -------------- Linear Heuristic criteria, added ratio of heuristic
+                
+                dlite_pnode(changedNode, data, robot, goal, frontier, closedNode, lastNode, km)
+                
+                ####################### Reset Rountine ###############################
                 km = 0
                 frontier.clear()
                 Pnode = 0
@@ -121,9 +135,14 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rt
                 for node in changedNode[0] + changedNode[1]: 
                     robot.update_cell(node) 
                 Pnode = compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode)
-                print "Pnode: {0}, true".format(Pnode)
-                modify_path(path, reconstruct_path_gradient(robot, data, goal))
+                print "Pnode reset: {0}, true".format(Pnode)            
+                
+                
             else:
+                
+                reset_pnode(changedNode, grid, robot, goal)
+                
+                ###################### D*Lite Routine ###############################
                 km += heuristic_distance(lastNode, robot.pos)
                 lastNode = robot.pos
                 for node in changedNode[0] + changedNode[1]: 
@@ -132,8 +151,9 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rt
                         update_vertex(next, robot, goal, frontier, data, km)
                     update_vertex(node, robot, goal, frontier, data, km)             
                 temp = compute_shortest_path(robot, goal, data, frontier, km, closedNode, 0)
-                print temp, "False"   
-                modify_path(path, reconstruct_path_gradient(robot, data, goal))        
+                print "Pnode D*Lite: {0}, false".format(temp)  
+                
+            modify_path(path, reconstruct_path_gradient(robot, data, goal))        
         sleep(0.3)
     
 ###########################################################
@@ -159,6 +179,40 @@ def reconstruct_path_gradient(robot, data, goal): # output the path from cost ma
         current = get_lowest_cost_node(robot, current, data)[0]
         path.append(current)
     return path
+
+def reset_pnode(changedNode, grid, robot, goal):
+    km_copy = 0
+    frontier_copy = PriorityDict()
+    robot_copy = copy.deepcopy(robot) 
+    closedNode_copy = []
+    data_copy = {k: [float("inf"), float("inf")] for k in [(i, j) for i in range(grid.ix) for j in range(grid.iy)]}  
+    
+    data_copy[goal][1] = 0
+    frontier_copy[goal] = heuristic_distance(robot_copy.pos, goal)
+    
+    for node in changedNode[0] + changedNode[1]: 
+        robot_copy.update_cell(node) 
+    temp = compute_shortest_path(robot_copy, goal, data_copy, frontier_copy, km_copy, closedNode_copy, 0)
+    print "Pnode reset: {0}".format(temp)
+    return temp
+
+def dlite_pnode(changedNode, data, robot, goal, frontier, closedNode, lastNode, km):
+    data_copy = copy.deepcopy(data)
+    robot_copy = copy.deepcopy(robot)
+    frontier_copy = copy.deepcopy(frontier)
+    closedNode_copy = []
+    km_copy = copy.deepcopy(km)
+                
+    km_copy += heuristic_distance(lastNode, robot_copy.pos) #lastNode do not rename
+    for node in changedNode[0] + changedNode[1]: 
+        robot_copy.update_cell(node)                # node -> v, next -> u          
+        for next in robot_copy.detect_neighbor(node):
+            update_vertex(next, robot_copy, goal, frontier_copy, data_copy, km_copy)
+        update_vertex(node, robot_copy, goal, frontier_copy, data_copy, km_copy)             
+    temp = compute_shortest_path(robot_copy, goal, data_copy, frontier_copy, km_copy, closedNode_copy, 0)
+    print "Pnode D*Lite: {0}".format(temp) 
+    return temp
+    
 
 def reconstruct_path(came_from, startP, goal): # output the path from search tree
     if came_from != None:

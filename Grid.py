@@ -158,7 +158,7 @@ class SquareGrid:
         self.resolution = resolution
         self.f = createFont("Arial", resolution / 2, True)
         self.walls = [] # map's obstacles
-        self.knowWorld = []
+        self.knownWorld = []
         self.roughs = [] # rough terran means higher cost to traverse (experimential)
         if(w % resolution == 0 and h % resolution == 0): # check if resolution is valid
             self.ix = w / resolution
@@ -189,7 +189,7 @@ class SquareGrid:
     
     def cost(self, currP, nextP): # get cost to traverse from current to next position
         val = 0
-        if currP in self.knownWorld or nextP in self.knownWorld:
+        if currP in self.knownWorld or nextP in self.knownWorld: # NEED TO CONSIDER
             return float("inf")
         if abs(nextP[1] - currP[1]) + abs(nextP[0] - currP[0]) == 1:
             val += 1
