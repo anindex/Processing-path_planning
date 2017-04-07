@@ -63,7 +63,7 @@ def get_lowest_rhs_node(robot, node, data):
     return result, neighbors[result]
 
 def compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode): 
-    while frontier and (frontier.top()[1] < (calculate_key(robot.pos, data, robot.pos, km) + 0.2) or data[robot.pos][1] != data[robot.pos][0]):
+    while frontier and (frontier.top()[1] < (calculate_key(robot.pos, data, robot.pos, km) + 0.1) or data[robot.pos][1] != data[robot.pos][0]):
         currNode, kold = frontier.pop() 
         knew = calculate_key(currNode, data, robot.pos, km)
         if kold < knew:
@@ -99,27 +99,30 @@ def dlite_search(grid, robot, startP, goal, path, frontier, closedNode, param_rt
     #robot.knownWorld = []
     ############## Main ####################
     Pnode = compute_shortest_path(robot, goal, data, frontier, km, closedNode, Pnode)
+    modify_path(path, reconstruct_path_gradient(robot, data, goal))
     
+    ################# Linear Heuristic Estimator ######################
     last_heuristic = heuristic_distance(startP, goal)
-    estimated_LH = Pnode / heuristic_distance(startP, goal)
-    print "Estimated LH: {0:0.2f}".format(estimated_LH)
-    
+    estimated_LH = len(path) / heuristic_distance(startP, goal)
+    print "Estimated LH: {0:0.2f}, Heuristic: {1:0.2f}, Path: {2}".format(estimated_LH, heuristic_distance(startP, goal), len(path))
     param_lh = estimated_LH
     
+    ################# Analytic Test Estimator #########################
     
     
-    modify_path(path, reconstruct_path_gradient(robot, data, goal))
+    
+    
     while robot.pos != goal:
         robot.pos = get_lowest_cost_node(robot, robot.pos, data)[0]
         Tnode += 1
         overallPath.append(robot.pos)
         changedNode = robot.detect_changes(grid)
         if changedNode[0] or changedNode[1]:
-            del closedNode[:]
+            del closedNode[:] #reset the display node
             current_heuristic = heuristic_distance(robot.pos, goal)
-            print "Pnode: {0}, Tnode: {1}, Path: {2}, Remain Node: {3}, Ratio: {4:0.2f}, Lheuristic: {5:0.2f}, LHRatio: {6:0.2f}".format(Pnode, Tnode, len(path), len(path) - Tnode, float(Tnode) / len(path), param_lh * heuristic_distance(robot.pos, goal), current_heuristic / last_heuristic) # Data Pnode and Tnode at the time robot detects changes
+            print "Pnode: {0}, Tnode: {1}, Path: {2}, Remain Node: {3}, Ratio: {4:0.2f}, Lheuristic: {5:0.2f}, LHRatio: {6:0.2f}".format(Pnode, Tnode, len(path), len(path) - Tnode, float(Tnode) / len(path), param_lh * current_heuristic, current_heuristic / last_heuristic) # Data Pnode and Tnode at the time robot detects changes
             #if float(Tnode) / len(path) > param_rtl: # -------------------- Ratio of traversed length        
-            if  len(path) - Tnode <= param_lh * current_heuristic and current_heuristic / last_heuristic < 0.35: # -------------- Linear Heuristic criteria, added ratio of heuristic
+            if  Tnode > 3 * param_lh * current_heuristic: # -------------- Linear Heuristic criteria, added ratio of heuristic
                 
                 dlite_pnode(changedNode, data, robot, goal, frontier, closedNode, lastNode, km)
                 

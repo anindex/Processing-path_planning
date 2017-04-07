@@ -22,8 +22,8 @@ res = 10 # set map resolution (10 means 10 pixels per square grid)
 startP = None # set starting and goal position of the robot (origin of coordinate is at top left of the window)
 goal = None
 
-sizeX = 310 # set the size of the environment
-sizeY = 310
+sizeX = 510 # set the size of the environment
+sizeY = 510
 
 grid = None
 ############################### Main Program ###########################################################
@@ -37,8 +37,8 @@ closedNode = []
 def setup():
     size(sizeX, sizeY, P3D) # set the size of the environnment
     
-    open_environment((2, 25), (25, 25))
-    #maze_environment()
+    #open_environment((2, 25), (35, 25))
+    maze_environment()
     
     global bot
     bot = Robot(2, 1, grid, startP) # initialize robot perception
